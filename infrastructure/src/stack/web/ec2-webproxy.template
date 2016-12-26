@@ -1,0 +1,461 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "Web Server Ec2 instances",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "A name for the stack",
+			"Type": "String"
+		},
+
+		"Target": {
+			"Description": "Environment target.",
+			"Type": "String"
+		},
+
+		"InstanceType": {
+			"Description": "Instance type to use.",
+			"Type": "String"
+		},
+
+		"Role": {
+			"Description": "IAM Role.",
+			"Type": "String"
+		},
+
+		"Profile": {
+			"Description": "IAM Profile.",
+			"Type": "String"
+		},
+
+		"Sns": {
+			"Description": "SNS Topic to be used by autoscaling.",
+			"Type": "String"
+		},
+
+		"AvailabilityZone1": {
+			"Description": "Availability zone 1.",
+			"Type": "String"
+		},
+
+		"PrivateApplicationSubnetZone1": {
+			"Description": "Private application subnet in Availability Zone 1.",
+			"Type": "String"
+		},
+
+		"PublicApplicationSubnetZone1": {
+			"Description": "Public application subnet in Availability Zone 1.",
+			"Type": "String"
+		},
+
+		"SecurityGroupLinuxServer": {
+			"Description": "Security group that is common to all accessible linux servers.",
+			"Type": "String"
+		},
+
+		"SecurityGroupWebApp": {
+			"Description": "Security group that is common to all web app servers.",
+			"Type": "String"
+		},
+
+		"SecurityGroupWebAppElb": {
+			"Description": "Security group used by web app elbs.",
+			"Type": "String"
+		},
+
+		"SecurityGroupPublicWebAccess": {
+			"Description": "Security group that allow access to public facing web components.",
+			"Type": "String"
+		},
+
+		"SecurityGroupRestrictedPublicWebAccess": {
+			"Description": "Security group that allow restricted access to public facing web components.",
+			"Type": "String"
+		},
+
+		"ExternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for external DNS.",
+			"Type": "String"
+		},
+
+		"InternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for internal DNS.",
+			"Type": "String"
+		},
+
+		"ExternalDnsSuffix": {
+			"Description": "DNS Suffix used outside the VPC.",
+			"Type": "String"
+		},
+
+		"InternalDnsSuffix": {
+			"Description": "DNS Suffix used within the VPC. This applies to instance host names and to dns names.",
+			"Type": "String"
+		},
+
+		"AliasElbDnsHostedZoneId": {
+			"Description": "Hosted zone id to use for elb alias records.",
+			"Type": "String"
+		},
+
+		"IntAliasElbDnsHostedZoneId": {
+			"Description": "Hosted zone id to use for internal elb alias records.",
+			"Type": "String"
+		},
+
+		"TimeZone": {
+			"Description": "Time zone setting for servers.",
+			"Type": "String"
+		},
+
+		"BucketSuffix": {
+			"Description": "This determines the suffix used for all buckets creates.",
+			"Type": "String"
+		},
+
+		"BucketKeysPrefix": {
+			"Description": "This determines the prefix used the keys bucket.",
+			"Type": "String"
+		},
+
+		"BucketScriptsPrefix": {
+			"Description": "This determines the prefix used the scripts bucket.",
+			"Type": "String"
+		},
+
+		"BucketBinariesPrefix": {
+			"Description": "This determines the prefix used the binaries bucket.",
+			"Type": "String"
+		},
+
+		"BucketWebContentPrefix": {
+			"Description": "This determines the prefix used the static content bucket.",
+			"Type": "String"
+		},
+
+		"ClusterDesiredSize": {
+			"Description": "Desired cluster size.",
+			"Type": "String"
+		},
+
+		"ClusterMinSize": {
+			"Description": "Min cluster size.",
+			"Type": "String"
+		},
+
+		"ClusterMaxSize": {
+			"Description": "Max cluster size.",
+			"Type": "String"
+		}
+	},
+
+	"Mappings": {
+
+		"Static": {
+
+			"Final": {
+
+			"EnvironmentName": "DEV1",
+				"VpcName": "VPC-DEV",
+				"CacheUrl": ""
+			},
+
+			"Keys": {
+
+				"AppKeyNameSuffix": "INT"
+			}
+		},
+
+		"Ami": {
+
+			"us-east-1": {
+				"Base": "ami-146e2a7c"
+			},
+			"us-west-1": {
+				"Base": "ami-42908907"
+			},
+			"us-west-2": {
+				"Base": "ami-20be7540"
+			},
+			"eu-west-1": {
+				"Base": "ami-9d23aeea"
+			},
+			"eu-central-1": {
+				"Base": "ami-04003319"
+			},
+			"ap-northeast-1": {
+				"Base": "ami-18869819"
+			},
+			"ap-southeast-1": {
+				"Base": "ami-35bc1356"
+			},
+			"ap-southeast-2": {
+				"Base": "ami-a5416cc6"
+			},
+			"sa-east-1": {
+				"Base": "ami-af9925b2"
+			}
+		},
+
+		"Region": {
+
+			"us-east-1": {
+				"RegionName": "virginia",
+				"S3Endpoint": "s3-us-east-1.amazonaws.com"
+			},
+			"us-west-1": {
+				"RegionName": "california",
+				"S3Endpoint": "s3-us-east-2.amazonaws.com"
+			},
+			"us-west-2": {
+				"RegionName": "oregon",
+				"S3Endpoint": "s3-us-west-2.amazonaws.com"
+			},
+			"eu-west-1": {
+				"RegionName": "ireland",
+				"S3Endpoint": "s3-eu-west-1.amazonaws.com"
+			},
+			"eu-central-1": {
+				"RegionName": "frankfurt",
+				"S3Endpoint": "s3-eu-central-1.amazonaws.com"
+			},
+			"ap-northeast-1": {
+				"RegionName": "japan",
+				"S3Endpoint": "s3-ap-northeast-1.amazonaws.com"
+			},
+			"ap-southeast-1": {
+				"RegionName": "singapore",
+				"S3Endpoint": "s3-ap-southeast-1.amazonaws.com"
+			},
+			"ap-southeast-2": {
+				"RegionName": "sydney",
+				"S3Endpoint": "s3-ap-southeast-2.amazonaws.com"
+			},
+			"sa-east-1": {
+				"RegionName": "brazil",
+				"S3Endpoint": "s3-sa-east-1.amazonaws.com"
+			}
+		}
+	},
+
+	"Resources": {
+
+		"DataVolume" : {
+			"Type" : "AWS::EC2::Volume",
+			"Properties" : {
+				"Size" : "1",
+				"AvailabilityZone" : { "Ref": "AvailabilityZone1" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] }, "WebServerVolume", { "Fn::FindInMap": [ "Static", "Final", "EnvironmentName" ] } ] ] } }
+				]}
+			},
+
+		"WebServerHost": {
+			"Type" : "AWS::EC2::Instance",
+			"Metadata" : {
+				"Comment" : "Install Apache HTTP",
+				"AWS::CloudFormation::Authentication": {
+					"BucketAuth": {
+						"type": "S3",
+						"roleName": { "Ref": "Role" },
+						"buckets": [
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketWebContentPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+						]
+					}
+				},
+				"AWS::CloudFormation::Init" : {
+					"configSets": {
+						"default": [ "time", "host", "mount", "apache"]
+					},
+					"time": {
+						"files": {
+							"/etc/sysconfig/clock": {
+								"content": { "Fn::Join": [ "", [ "ZONE=\"", { "Ref": "TimeZone" }, "\"\n", "UTC=true\n" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"1-localtime": {
+								"command": "rm -rf /etc/localtime"
+							},
+							"2-localtime": {
+								"command": { "Fn::Join": [ "", [ "ln -s /usr/share/zoneinfo/", { "Ref": "TimeZone" }, " /etc/localtime" ] ] }
+							}
+						}
+					},
+					"host": {
+						"files": {
+							"/opt/awsa10/host/set-hostname.sh": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/host/set-hostname-ubuntu.sh" ] ] },
+								"mode": "000744",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"set-hostname": {
+								"command": { "Fn::Join": [ "", [ "/opt/awsa10/host/set-hostname.sh -i -h ", "cd", " -d ", { "Ref": "InternalDnsSuffix" } ] ] }
+							}
+						}
+					},
+					"mount": {
+						"files": {
+							"/opt/awsa01/host/mount.sh": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/host/mountvolume.sh" ] ] },
+								"mode": "000744",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"mount-volume": {
+								"command": { "Fn::Join": [ "", [ "/opt/awsa01/host/mount.sh -i -h ", "cd", " -d ", { "Ref": "InternalDnsSuffix" } ] ] }
+							}
+						}
+
+					},
+					"apache": {
+						"packages" : {
+							"apt" : {
+								"apache2": []
+							}
+						},
+
+						"files" : {
+
+							"/web/www/html/index.html" : {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketWebContentPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/html/index.html" ] ] },
+								"mode"    : "000744",
+								"owner"   : "root",
+								"group"   : "root"
+							},
+							"/etc/apache2/apache2.conf" : {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/proxy/apache2.conf" ] ] },
+								"mode"    : "000744",
+								"owner"   : "root",
+								"group"   : "root"
+							},
+							"/etc/apache2/sites-enabled/000-default.conf" : {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/proxy/000-default.conf" ] ] },
+								"mode"    : "000744",
+								"owner"   : "root",
+								"group"   : "root"
+							}
+						},
+						"commands": {
+							"1-apache-restart": {
+								"command": "apachectl restart"
+							}
+						},
+
+						"services" : {
+							"sysvinit" : {
+								"apache2"    : { "enabled" : "true", "ensureRunning" : "true" }
+							}
+						}
+					}
+				}
+			},
+
+			"Properties": {
+				"IamInstanceProfile": { "Ref": "Profile" },
+				"ImageId": { "Fn::FindInMap": [ "Ami", { "Ref": "AWS::Region" }, "Base" ] },
+				"InstanceType": { "Ref": "InstanceType" },
+				"Monitoring": "false",
+				"NetworkInterfaces": [
+					{ "AssociatePublicIpAddress" : "true",
+					  "DeviceIndex" : "0",
+						"GroupSet": [ { "Ref": "SecurityGroupWebApp" }, { "Ref": "SecurityGroupLinuxServer" }],
+						"SubnetId": { "Ref" : "PublicApplicationSubnetZone1" }
+					}
+				],
+				"KeyName": { "Fn::Join": [ "-", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "Target" }, { "Fn::FindInMap": [ "Static", "Keys", "AppKeyNameSuffix" ] } ] ] },
+				"Volumes" : [
+					{ "VolumeId" : { "Ref" : "DataVolume" },
+						"Device" : "/dev/sdf"
+					}
+				],
+				"UserData": { "Fn::Base64" : { "Fn::Join" : ["", [
+					"#!/bin/bash\n",
+					"exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1\n",
+					"export DEBIAN_FRONTEND=noninteractive\n",
+					"apt-get -y update\n",
+					"apt-get -y install python-setuptools\n",
+					"apt-get -y install language-pack-en\n",
+					"wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz","\n",
+					"mkdir -p /root/aws-cfn-bootstrap-latest","\n",
+					"tar xvfz /root/aws-cfn-bootstrap-latest.tar.gz --strip-components=1 -C /root/aws-cfn-bootstrap-latest","\n",
+					"easy_install /root/aws-cfn-bootstrap-latest/","\n",
+					"/usr/local/bin/cfn-init -s ", { "Ref": "AWS::StackName" }, " -r WebServerHost --region ", { "Ref": "AWS::Region" },"\n"
+					]]}},
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] }, "Web Server", { "Fn::FindInMap": [ "Static", "Final", "EnvironmentName" ] } ] ] } },
+					{ "Key": "Role", "Value": "webapp" },
+					{ "Key": "Segment", "Value": "web"},
+					{ "Key": "Sector", "Value": "public" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] } }
+				]
+			}
+		},
+
+		"ElasticLoadBalancer": {
+			"Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties": {
+				"ConnectionDrainingPolicy": {
+					"Enabled": "true",
+					"Timeout": "60"
+				},
+				"Listeners": [ {
+					"LoadBalancerPort": "80",
+					"Protocol": "HTTP",
+					"InstancePort": "80",
+					"InstanceProtocol": "HTTP"
+				}
+				],
+				"HealthCheck": {
+					"HealthyThreshold": "2",
+					"Interval": "10",
+					"Target": "HTTP:80/index.html",
+					"Timeout": "5",
+					"UnhealthyThreshold": "3"
+				},
+				"Scheme": "internet-facing",
+				"SecurityGroups": [
+					{ "Ref": "SecurityGroupWebAppElb" },
+					{ "Ref": "SecurityGroupPublicWebAccess" }
+				],
+				"Subnets": [
+					{ "Ref": "PublicApplicationSubnetZone1" }
+				],
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] }, "Web App", { "Fn::FindInMap": [ "Static", "Final", "EnvironmentName" ] } ] ] } },
+					{ "Key": "Role", "Value": "webapp" },
+					{ "Key": "Segment", "Value": "app" },
+					{ "Key": "Sector", "Value": "public" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] } }
+				]
+			}
+		},
+
+		"DnsElbAlias": {
+			"Type": "AWS::Route53::RecordSet",
+			"Properties": {
+				"HostedZoneId": { "Ref": "ExternalDnsHostedZoneId" },
+				"Type": "A",
+				"AliasTarget": {
+					"HostedZoneId": { "Ref": "AliasElbDnsHostedZoneId" },
+					"DNSName": { "Fn::GetAtt": [ "ElasticLoadBalancer", "DNSName" ] }
+				},
+				"Name": { "Ref": "ExternalDnsSuffix" }
+			}
+		}
+
+	}
+}

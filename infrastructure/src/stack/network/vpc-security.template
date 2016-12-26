@@ -1,0 +1,272 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "VPC Security",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "A name for the stack",
+			"Type": "String"
+		},
+
+		"VpcId": {
+			"Description": "VPC Id",
+			"Type": "String"
+		},
+
+		"VpcName": {
+			"Description": "VPC name descriptor.",
+			"Type": "String"
+		},
+
+		"VpcCidrBlock": {
+			"Description": "Cidr Block for the VPC",
+			"Type": "String"
+		},
+		"RoutingSubnetCidrBlock": {
+			"Description": "Cidr Block for the VPC",
+			"Type": "String"
+		}
+	},
+
+	"Resources": {
+
+		"SecurityGroupRestrictedPublicWebAccess": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security rules for Public subnet.",
+				"VpcId": { "Ref": "VpcId" },
+				"SecurityGroupIngress": [ {
+					"IpProtocol": "udp",
+					"FromPort": "1194",
+					"ToPort": "1194",
+					"CidrIp": "14.202.165.0/24"
+					},
+					{
+						"IpProtocol": "udp",
+						"FromPort": "1194",
+						"ToPort": "1194",
+						"CidrIp": "139.163.131.0/24"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "14.202.165.0/24"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "139.163.131.0/24"
+					},
+					{
+						"IpProtocol": "udp",
+						"FromPort": "1194",
+						"ToPort": "1194",
+						"CidrIp": "175.103.19.0/24"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "175.103.19.0/24"
+					}
+				],
+				"SecurityGroupEgress": [ {
+					"IpProtocol": "tcp",
+					"FromPort": "0",
+					"ToPort": "65535",
+					"CidrIp": { "Ref": "VpcCidrBlock" }
+				}, {
+					"IpProtocol": "tcp",
+					"FromPort": "80",
+					"ToPort": "80",
+					"CidrIp": "0.0.0.0/0"
+				}, {
+					"IpProtocol": "tcp",
+					"FromPort": "443",
+					"ToPort": "443",
+					"CidrIp": "0.0.0.0/0"
+				}, {
+					"IpProtocol": "udp",
+					"FromPort": "53",
+					"ToPort": "53",
+					"CidrIp": "0.0.0.0/0"
+				}, {
+					"IpProtocol": "udp",
+					"FromPort": "123",
+					"ToPort": "123",
+					"CidrIp": "0.0.0.0/0"
+				}
+				],
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Vpn Server" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"SecurityGroupLinuxServer": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security group that is common to all accessible linux servers.",
+				"SecurityGroupIngress": [
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": { "Ref": "RoutingSubnetCidrBlock" }
+					}
+				],
+				"SecurityGroupEgress": [ {
+						"IpProtocol": "udp",
+						"FromPort": "53",
+						"ToPort": "53",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "udp",
+						"FromPort": "123",
+						"ToPort": "123",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "tcp",
+						"FromPort": "80",
+						"ToPort": "80",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "tcp",
+						"FromPort": "443",
+						"ToPort": "443",
+						"CidrIp": "0.0.0.0/0"
+					}
+				],
+				"VpcId": { "Ref": "VpcId" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Linux Server" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"SecurityGroupPublicWebAccess": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security group that allow access to public facing web components.",
+				"SecurityGroupIngress": [ {
+						"IpProtocol": "tcp",
+						"FromPort": "80",
+						"ToPort": "80",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "tcp",
+						"FromPort": "443",
+						"ToPort": "443",
+						"CidrIp": "0.0.0.0/0"
+					}
+				],
+				"SecurityGroupEgress": [ {
+						"CidrIp": "127.0.0.1/32",
+						"IpProtocol": "-1"
+					}
+				],
+				"VpcId": { "Ref": "VpcId" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Public Web Access" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"SecurityGroupWebAppElb": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security group used by web app elbs.",
+				"SecurityGroupIngress": [ ],
+				"SecurityGroupEgress": [ ],
+				"VpcId": { "Ref": "VpcId" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Web App Elb" ] ] } },
+					{ "Key": "Segment", "Value": "app" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"EgressRuleWebAppElb01": {
+			"Type": "AWS::EC2::SecurityGroupEgress",
+			"Properties": {
+				"GroupId": { "Ref": "SecurityGroupWebAppElb" },
+				"IpProtocol": "tcp",
+				"FromPort": "80",
+				"ToPort": "80",
+				"DestinationSecurityGroupId": { "Ref": "SecurityGroupWebApp" }
+			}
+		},
+
+
+		"SecurityGroupWebApp": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security group that is common to all web app servers.",
+				"SecurityGroupIngress": [ {
+						"IpProtocol": "tcp",
+						"FromPort": "80",
+						"ToPort": "80",
+						"SourceSecurityGroupId": { "Ref": "SecurityGroupRestrictedPublicWebAccess" }
+					}, {
+						"IpProtocol": "tcp",
+						"FromPort": "80",
+						"ToPort": "80",
+						"SourceSecurityGroupId": { "Ref": "SecurityGroupWebAppElb" }
+					}
+				],
+				"SecurityGroupEgress": [ {
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "0.0.0.0/0"
+					}
+				],
+				"VpcId": { "Ref": "VpcId" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Web App Server" ] ] } },
+					{ "Key": "Segment", "Value": "app" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		}
+	},
+
+	"Outputs": {
+
+		"SecurityGroupLinuxServer": {
+			"Description": "Security group that is common to all accessible linux servers.",
+			"Value": { "Ref": "SecurityGroupLinuxServer" }
+		},
+
+		"SecurityGroupRestrictedPublicWebAccess": {
+			"Description": "Security group that allow restricted access to public facing web components.",
+			"Value": { "Ref": "SecurityGroupRestrictedPublicWebAccess" }
+		},
+
+		"SecurityGroupPublicWebAccess": {
+			"Description": "Security group that allow access to public facing web components.",
+			"Value": { "Ref": "SecurityGroupPublicWebAccess" }
+		},
+
+		"SecurityGroupWebAppElb": {
+			"Description": "Security group used by web app elbs.",
+			"Value": { "Ref": "SecurityGroupWebAppElb" }
+		},
+
+		"SecurityGroupWebApp": {
+			"Description": "Security group that is common to all web app servers.",
+			"Value": { "Ref": "SecurityGroupWebApp" }
+		}
+	}
+}

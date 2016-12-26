@@ -1,0 +1,254 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "VPC Bastion Single",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "Name of the company.",
+			"Type": "String"
+		},
+
+		"VpcName": {
+			"Description": "VPC name descriptor.",
+			"Type": "String"
+		},
+
+		"AmiId": {
+			"Description": "Ami to use for vpn instances.",
+			"Type": "String"
+		},
+
+		"InstanceType": {
+			"Description": "Instance type to use for vpn hosts",
+			"Type": "String"
+		},
+
+		"IamRole": {
+			"Description": "IAM role used by vpn instances.",
+			"Type": "String"
+		},
+
+		"IamProfile": {
+			"Description": "IAM profile used by vpn instances.",
+			"Type": "String"
+		},
+
+		"BucketScripts": {
+			"Description": "Bucket hosting bootstrap scripts.",
+			"Type": "String"
+		},
+
+		"BucketBinaries": {
+			"Description": "Bucket containing installable binaries.",
+			"Type": "String"
+		},
+
+		"BucketKeys": {
+			"Description": "Bucket hosting keys.",
+			"Type": "String"
+		},
+
+		"TimeZone": {
+			"Description": "Time zone setting for servers.",
+			"Type": "String"
+		},
+
+		"AvailabilityZone1": {
+			"Description": "Availability Zone 1",
+			"Type": "String"
+		},
+
+		"S3Endpoint": {
+			"Description": "S3 endpoint.",
+			"Type": "String"
+		},
+
+		"RoutingSubnetZone1": {
+			"Description": "Zone 1 subnet for Bastion instance.",
+			"Type": "String"
+		},
+
+		"KeyName": {
+			"Description": "Bastion instances key name.",
+			"Type": "String"
+		},
+
+		"SecurityGroupBastion": {
+			"Description": "Bastion security group.",
+			"Type": "String"
+		},
+
+		"ScriptPath": {
+			"Description": "Root path for all scripts.",
+			"Type": "String"
+		},
+
+		"BinaryPath": {
+			"Description": "Root path for all binaries.",
+			"Type": "String"
+		},
+
+		"KeysPath": {
+			"Description": "Root path for all keys.",
+			"Type": "String"
+		},
+
+		"VpcCidr": {
+			"Description": "CIDR block used by the VPC.",
+			"Type": "String"
+		},
+
+		"Hostname": {
+			"Description": "Hostname prefix for the bastion instance.",
+			"Type": "String",
+			"Default": "bst"
+		},
+
+		"Domain": {
+			"Description": "Domain portion of the hostname for the vpn instances.",
+			"Type": "String"
+		},
+
+		"EipAllocationId": {
+			"Description": "Allocation id for bastion eip.",
+			"Type": "String"
+		}
+
+	},
+
+	"Resources": {
+
+		"Metadata": {
+			"Type": "AWS::AutoScaling::LaunchConfiguration",
+			"Properties": {
+				"ImageId": { "Ref": "AmiId" },
+				"InstanceType": { "Ref": "InstanceType" }
+			},
+			"Metadata": {
+				"AWS::CloudFormation::Authentication": {
+					"BucketAuth": {
+						"type": "S3",
+						"roleName": { "Ref": "IamRole" },
+						"buckets": [
+							{ "Ref": "BucketScripts" },
+							{ "Ref": "BucketBinaries" },
+							{ "Ref": "BucketKeys" }
+						]
+					}
+				},
+				"AWS::CloudFormation::Init": {
+					"configSets": {
+						"default": [ "time", "host", "eip" ]
+					},
+					"time": {
+						"files": {
+							"/etc/sysconfig/clock": {
+								"content": { "Fn::Join": [ "", [ "ZONE=\"", { "Ref": "TimeZone" }, "\"\n", "UTC=true\n" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"1-localtime": {
+								"command": "rm -rf /etc/localtime"
+							},
+							"2-localtime": {
+								"command": { "Fn::Join": [ "", [ "ln -s /usr/share/zoneinfo/", { "Ref": "TimeZone" }, " /etc/localtime" ] ] }
+							}
+						}
+					},
+					"host": {
+						"files": {
+							"/opt/cd/host/set-hostname.sh": {
+								"source": { "Fn::Join": [ "", [ { "Ref": "ScriptPath" }, "/host/set-hostname.sh" ] ] },
+								"mode": "000744",
+								"owner": "root",
+								"group": "root"
+							},
+							"/home/ubuntu/.ssh/id_rsa": {
+								"source": { "Fn::Join": [ "",  [ { "Ref": "KeysPath" }, "/ec2keys/AWSA01-singapore-Test-INT.pem" ] ] },
+								"mode": "000600",
+								"owner": "ec2-user",
+								"group": "ec2-user"
+							}
+						},
+						"commands": {
+							"1-dirs": {
+								"command": "mkdir -p /opt/cd && mkdir -p /opt/cd/host && mkdir -p /opt/cd/eip"
+							},
+							"2-set-hostname": {
+								"command": { "Fn::Join": [ "", [ "/opt/cd/host/set-hostname.sh -i -h ", { "Ref": "Hostname" }, " -d ", { "Ref": "Domain" } ] ] }
+							}
+						}
+					},
+					"eip": {
+						"files": {
+							"/opt/cd/eip/attach-eip.sh": {
+								"source": { "Fn::Join": [ "", [ { "Ref": "ScriptPath" }, "/eip/attach-eip.sh" ] ] },
+								"mode": "000744",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"attach-eip": {
+								"command": { "Fn::Join" : [ "", [ "/opt/cd/eip/attach-eip.sh -e ", { "Ref": "EipAllocationId" }, " -r ", { "Ref": "AWS::Region" } ] ] }
+							}
+						}
+					}
+				}
+			}
+		},
+
+		"LaunchConfig": {
+			"Type": "AWS::AutoScaling::LaunchConfiguration",
+			"Properties": {
+				"AssociatePublicIpAddress": "true",
+				"IamInstanceProfile": { "Ref": "IamProfile" },
+				"ImageId": { "Ref": "AmiId" },
+				"InstanceType": { "Ref": "InstanceType" },
+				"InstanceMonitoring": "false",
+				"KeyName": { "Ref": "KeyName" },
+				"SecurityGroups": [
+					{ "Ref": "SecurityGroupBastion" }
+				],
+				"UserData": {
+					"Fn::Base64": {
+						"Fn::Join": [ "", [
+							"#!/bin/bash\n",
+							"export JAVA_HOME=/usr/lib/jvm/jre\n",
+							"export EC2_HOME=/opt/aws/apitools/ec2\n",
+							"/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackName" }, " -r Metadata --region ", { "Ref": "AWS::Region" }, "\n"
+						] ]
+					}
+				}
+			}
+		},
+
+		"AutoscalingGroup": {
+			"Type": "AWS::AutoScaling::AutoScalingGroup",
+			"Properties": {
+				"AvailabilityZones": [
+					{ "Ref": "AvailabilityZone1" }
+				],
+				"LaunchConfigurationName": { "Ref": "LaunchConfig" },
+				"DesiredCapacity": "1",
+				"MaxSize": "1",
+				"MinSize": "1",
+				"VPCZoneIdentifier": [
+					{ "Ref": "RoutingSubnetZone1" }
+				],
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Open VPN" ] ] }, "PropagateAtLaunch": "true" },
+					{ "Key": "Role", "Value": "vpn", "PropagateAtLaunch": "true" },
+					{ "Key": "Segment", "Value": "core", "PropagateAtLaunch": "true" },
+					{ "Key": "Sector", "Value": "public", "PropagateAtLaunch": "true" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "PropagateAtLaunch": "true" }
+				]
+			}
+		}
+	}
+}

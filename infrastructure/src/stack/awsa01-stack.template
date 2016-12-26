@@ -1,0 +1,412 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": " Base template (wraps other templates). This stack creates elementary config for testing i.e. Single zone with no redundancy; Open access without VPN; Apache reverse proxy ",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "A name for the stack",
+			"Type": "String"
+		},
+
+		"NotificationEmail": {
+			"Description": "This email address will receive all autoscaling event notifications.",
+			"Type": "String",
+			"AllowedPattern": "^[^@]+@[^@]+\\.[^@]+$"
+		},
+
+		"CriticalAlertEmail": {
+			"Description": "This email address will receive all production autoscaling event notifications.",
+			"Type": "String",
+			"AllowedPattern": "^[^@]+@[^@]+\\.[^@]+$"
+		},
+
+		"ExternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for external DNS.",
+			"Type": "String"
+		},
+
+		"ExternalDnsSuffix": {
+			"Description": "DNS Suffix used for public facing elements.",
+			"Type": "String"
+		},
+
+		"InternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for internal DNS.",
+			"Type": "String"
+		},
+
+		"InternalDnsSuffix": {
+			"Description": "DNS Suffix used within the VPC. This applies to instance host names and to dns names.",
+			"Type": "String"
+		},
+
+		"EipNatGateway01AllocationId": {
+			"Description": "Allocation id for nat gateway eip.",
+			"Type": "String"
+		},
+
+		"VpcCidrBlockPrefix": {
+			"Description": "First two stanzas of the vpc cidr block.",
+			"Type": "String"
+		},
+
+		"TimeZone": {
+			"Description": "Time zone setting for servers.",
+			"Type": "String"
+		},
+
+		"SingleZonePreference": {
+			"Description": "Preferred zone for single zone components.",
+			"Type": "String"
+		},
+
+		"BucketSuffix": {
+			"Description": "This determines the suffix used for all buckets creates.",
+			"Type": "String"
+		},
+
+		"BucketStacksPrefix": {
+			"Description": "This determines the prefix used for the stacks bucket.",
+			"Type": "String"
+		},
+
+		"BucketScriptsPrefix": {
+			"Description": "This determines the prefix used for the scripts bucket.",
+			"Type": "String"
+		},
+
+		"BucketKeysPrefix": {
+			"Description": "This determines the prefix used for the keys bucket.",
+			"Type": "String"
+		},
+
+		"BucketBinariesPrefix": {
+			"Description": "This determines the prefix used for the binaries bucket.",
+			"Type": "String"
+		},
+
+		"BucketWebContentPrefix": {
+			"Description": "This determines the prefix used by the elasticsearch bucket.",
+			"Type": "String"
+		},
+
+        "CreateBastion": {
+            "Description": "Determines if a bastion server is created.",
+            "Type": "String",
+            "Default": "no"
+        },
+        "BastionInstanceType": {
+            "Description": "This determines the type of instance.",
+            "Type": "String"
+        }
+	},
+
+	"Mappings": {
+
+		"Static": {
+
+			"Final": {
+
+				"EnvironmentName": "Test",
+				"VpcName": "AWSA01"
+			},
+
+			"Keys": {
+
+				"VpnKeyNameSuffix": "INT"
+			}
+		},
+
+		"Ami": {
+
+			"us-east-1": {
+				"Base": "ami-146e2a7c"
+			},
+			"us-west-1": {
+				"Base": "ami-42908907"
+			},
+			"us-west-2": {
+				"Base": "ami-dfc39aef"
+			},
+			"eu-west-1": {
+				"Base": "ami-9d23aeea"
+			},
+			"eu-central-1": {
+				"Base": "ami-04003319"
+			},
+			"ap-northeast-1": {
+				"Base": "ami-18869819"
+			},
+			"ap-southeast-1": {
+				"Base": "ami-35bc1356"
+			},
+			"ap-southeast-2": {
+				"Base": "ami-fd9cecc7"
+			},
+			"sa-east-1": {
+				"Base": "ami-af9925b2"
+			}
+		},
+
+		"Region": {
+
+			"us-east-1": {
+				"RegionName": "virginia",
+				"AvailabilityZone1": "us-east-1a",
+				"AvailabilityZone2": "us-east-1b",
+				"S3Endpoint": "s3-us-east-1.amazonaws.com"
+			},
+			"us-west-1": {
+				"RegionName": "california",
+				"AvailabilityZone1": "us-west-1a",
+				"AvailabilityZone2": "us-west-1b",
+				"S3Endpoint": "s3-us-west-1.amazonaws.com"
+			},
+			"us-west-2": {
+				"RegionName": "oregon",
+				"AvailabilityZone1": "us-west-2a",
+				"AvailabilityZone2": "us-west-2b",
+				"S3Endpoint": "s3-us-west-2.amazonaws.com"
+			},
+			"eu-west-1": {
+				"RegionName": "ireland",
+				"AvailabilityZone1": "eu-west-1a",
+				"AvailabilityZone2": "eu-west-1b",
+				"S3Endpoint": "s3-eu-west-1.amazonaws.com"
+			},
+			"eu-central-1": {
+				"RegionName": "frankfurt",
+				"AvailabilityZone1": "eu-central-1a",
+				"AvailabilityZone2": "eu-central-1b",
+				"S3Endpoint": "s3-eu-central-1.amazonaws.com"
+			},
+			"ap-northeast-1": {
+				"RegionName": "japan",
+				"AvailabilityZone1": "ap-northeast-1a",
+				"AvailabilityZone2": "ap-northeast-1b",
+				"S3Endpoint": "s3-ap-northeast-1.amazonaws.com"
+			},
+			"ap-southeast-1": {
+				"RegionName": "singapore",
+				"AvailabilityZone1": "ap-southeast-1a",
+				"AvailabilityZone2": "ap-southeast-1b",
+				"S3Endpoint": "s3-ap-southeast-1.amazonaws.com"
+			},
+			"ap-southeast-2": {
+				"RegionName": "sydney",
+				"AvailabilityZone1": "ap-southeast-2a",
+				"AvailabilityZone2": "ap-southeast-2b",
+				"S3Endpoint": "s3-ap-southeast-2.amazonaws.com"
+			},
+			"sa-east-1": {
+				"RegionName": "brazil",
+				"AvailabilityZone1": "sa-east-1a",
+				"AvailabilityZone2": "sa-east-1b",
+				"S3Endpoint": "s3-sa-east-1.amazonaws.com"
+			}
+		}
+	},
+
+    "Conditions": {
+        "CreateBastion": { "Fn::Equals": [ { "Ref": "CreateBastion" }, "yes" ] }
+    },
+
+
+  "Resources": {
+
+		"VpcCore": {
+			"Type": "AWS::CloudFormation::Stack",
+			"Properties": {
+				"TemplateURL": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketStacksPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/network/vpc-main.template" ] ] },
+				"TimeoutInMinutes": "15",
+				"Parameters": {
+					"StackName": { "Ref": "StackName" },
+					"AvailabilityZone1": { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "AvailabilityZone1" ] },
+					"VpcCidrBlockPrefix": { "Ref": "VpcCidrBlockPrefix" },
+					"CriticalAlertEmail": { "Ref": "CriticalAlertEmail" },
+					"S3Endpoint": { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] },
+					"VpcName": { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] },
+					"EipNatGateway01AllocationId": { "Ref": "EipNatGateway01AllocationId" },
+					"TimeZone": { "Ref": "TimeZone" },
+					"BucketStacks": { "Fn::Join": [ "-", [ { "Ref": "BucketStacksPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketScripts": { "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketKeys": { "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketBinaries": { "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketWebContent": { "Fn::Join": [ "-", [ { "Ref": "BucketWebContentPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"InternalDnsSuffix": { "Ref": "InternalDnsSuffix" },
+					"InternalDnsHostedZoneId": { "Ref": "InternalDnsHostedZoneId" },
+					"StackPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketStacksPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+					"ScriptPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+					"BinaryPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketBinariesPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] }
+				}
+			}
+		},
+
+		"VpcSecurity": {
+			"Type": "AWS::CloudFormation::Stack",
+			"Properties": {
+				"TemplateURL": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketStacksPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/network/vpc-security.template" ] ] },
+				"TimeoutInMinutes": "15",
+				"Parameters": {
+					"StackName": { "Ref": "StackName" },
+					"VpcId": { "Fn::GetAtt": [ "VpcCore", "Outputs.VpcId" ] },
+					"VpcName": { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] },
+					"VpcCidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, "0.0/16" ] ] },
+					"RoutingSubnetCidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, "0.0/16" ] ] }
+				}
+			}
+		},
+
+        "VpcBastionShared": {
+        "Type": "AWS::CloudFormation::Stack",
+        "Properties": {
+          "TemplateURL": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketStacksPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/network/bastion/vpc-bastion-shared.template" ] ] },
+          "TimeoutInMinutes": "15",
+          "Parameters": {
+            "StackName": { "Ref": "StackName" },
+            "VpcName": { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] },
+            "VpcId": { "Fn::GetAtt": [ "VpcCore", "Outputs.VpcId" ] },
+            "VpcCidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, "0.0/16" ] ] },
+            "CriticalAlertEmail": { "Ref": "CriticalAlertEmail" },
+            "BucketScripts": { "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+            "BucketKeys": { "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+            "BucketBinaries": { "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+          }
+        }
+      },
+
+        "VpcBastionSingle": {
+        "Type": "AWS::CloudFormation::Stack",
+        "Condition": "CreateBastion",
+        "Properties": {
+          "TemplateURL": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketStacksPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/network/bastion/vpc-bastion-single.template" ] ] },
+          "TimeoutInMinutes": "15",
+          "Parameters": {
+            "StackName": { "Ref": "StackName" },
+            "VpcName": { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] },
+            "IamRole": { "Fn::GetAtt": [ "VpcBastionShared", "Outputs.Role" ] },
+            "IamProfile": { "Fn::GetAtt": [ "VpcBastionShared", "Outputs.Profile" ] },
+            "AmiId": { "Fn::FindInMap": [ "Ami", { "Ref": "AWS::Region" }, "Base" ] },
+			"SecurityGroupBastion": { "Fn::GetAtt": [ "VpcBastionShared", "Outputs.SecurityGroupBastion" ] },
+            "InstanceType": { "Ref": "BastionInstanceType" },
+            "BucketScripts": { "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+            "BucketKeys": { "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+            "BucketBinaries": { "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+            "TimeZone": { "Ref": "TimeZone" },
+            "AvailabilityZone1": { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "AvailabilityZone1" ] },
+            "S3Endpoint": { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] },
+            "RoutingSubnetZone1": { "Fn::GetAtt": [ "VpcCore", "Outputs.RoutingSubnetZone1" ] },
+            "KeyName": { "Fn::Join": [ "-", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Fn::FindInMap": [ "Static", "Final", "EnvironmentName" ] }, { "Fn::FindInMap": [ "Static", "Keys", "VpnKeyNameSuffix" ] } ] ] },
+            "ScriptPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+			"KeysPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketKeysPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+			"BinaryPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketBinariesPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+            "VpcCidr": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, "0.0/16" ] ] },
+            "Domain": { "Ref": "InternalDnsSuffix" },
+            "EipAllocationId": { "Fn::GetAtt": [ "VpcBastionShared", "Outputs.EipBastionAllocationId" ] }
+          }
+        }
+      },
+
+		"IAM": {
+			"Type": "AWS::CloudFormation::Stack",
+			"Properties": {
+				"TemplateURL": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketStacksPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/app/IAM.template" ] ] },
+				"TimeoutInMinutes": "15",
+				"Parameters": {
+					"StackName": { "Ref": "StackName" },
+					"VpcName": { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] },
+					"NotificationEmail": { "Ref": "NotificationEmail" },
+					"CriticalAlertEmail": { "Ref": "CriticalAlertEmail" },
+					"ExternalDnsSuffix": { "Ref": "ExternalDnsSuffix" },
+					"BucketScripts": { "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketKeys": { "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketBinaries": { "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+					"BucketWebContent": { "Fn::Join": [ "-", [ { "Ref": "BucketWebContentPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+                    "KeyPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketKeysPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+					"ScriptPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] },
+					"BinaryPath": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketBinariesPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" } ] ] }
+				}
+			}
+		}
+
+	},
+
+	"Outputs": {
+
+		"AvailabilityZone1": {
+			"Description": "Availability zone 1",
+			"Value": { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "AvailabilityZone1" ] }
+		},
+
+		"VpcId": {
+			"Description": "Vpc ID",
+			"Value": { "Fn::GetAtt": [ "VpcCore", "Outputs.VpcId" ] }
+		},
+
+        "RoutingSubnetZone1": {
+            "Description": "Routing subnet in Availability Zone 1",
+            "Value": { "Fn::GetAtt": [ "VpcCore", "Outputs.RoutingSubnetZone1" ] }
+        },
+
+		"PublicApplicationSubnetZone1": {
+			"Description": "Public subnet in Availability Zone 1",
+			"Value": { "Fn::GetAtt": [ "VpcCore", "Outputs.PublicApplicationSubnetZone1" ] }
+		},
+
+		"PrivateApplicationSubnetZone1": {
+			"Description": "Private subnet in Availability Zone 1",
+			"Value": { "Fn::GetAtt": [ "VpcCore", "Outputs.PrivateApplicationSubnetZone1" ] }
+		},
+
+		"SecurityGroupLinuxServer": {
+			"Description": "Security group that is common to all accessible linux servers",
+			"Value": { "Fn::GetAtt": [ "VpcSecurity", "Outputs.SecurityGroupLinuxServer" ] }
+		},
+
+		"SecurityGroupRestrictedPublicWebAccess": {
+			"Description": "Security group that allow restricted access to public facing web components.",
+			"Value": { "Fn::GetAtt": [ "VpcSecurity", "Outputs.SecurityGroupRestrictedPublicWebAccess" ] }
+		},
+
+		"SecurityGroupPublicWebAccess": {
+			"Description": "Security group that allow access to public facing web components.",
+			"Value": { "Fn::GetAtt": [ "VpcSecurity", "Outputs.SecurityGroupPublicWebAccess" ] }
+		},
+
+		"SecurityGroupWebAppElb": {
+			"Description": "Security group used by web app elbs.",
+			"Value": { "Fn::GetAtt": [ "VpcSecurity", "Outputs.SecurityGroupWebAppElb" ] }
+		},
+
+		"SecurityGroupWebApp": {
+			"Description": "Security group that is common to all web app servers.",
+			"Value": { "Fn::GetAtt": [ "VpcSecurity", "Outputs.SecurityGroupWebApp" ] }
+		},
+
+        "RoleWeb": {
+            "Description": "IAM Role for Apache Web Node",
+            "Value": { "Fn::GetAtt": [ "IAM", "Outputs.RoleWeb" ] }
+        },
+
+        "ProfileWeb": {
+            "Description": "IAM Profile for Jenkins Node",
+            "Value": { "Fn::GetAtt": [ "IAM", "Outputs.ProfileWeb" ] }
+        },
+
+        "SnsWeb": {
+            "Description": "SNS Topic to be used by Web App autoscaling",
+            "Value": { "Fn::GetAtt": [ "IAM", "Outputs.SnsWeb" ] }
+        },
+        "EipBastionAllocationId": {
+            "Description": "EIP allocation id for nat gateway 01",
+            "Value": { "Fn::GetAtt": [ "VpcBastionShared" , "Outputs.EipBastionAllocationId" ] }
+        },
+
+        "EipBastionIp": {
+            "Description": "EIP address for nat gateway 01",
+            "Value": { "Fn::GetAtt": [ "VpcBastionShared" , "Outputs.EipBastionIp" ] }
+        }
+	}
+}

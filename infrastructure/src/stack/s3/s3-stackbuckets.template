@@ -1,0 +1,116 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "S3 buckets for storing infrastrucutre and Apache setup code",
+
+	"Parameters": {
+
+		"BucketSuffix": {
+			"Description": "This determines the suffix used for all buckets creates.",
+			"Type": "String"
+		},
+
+		"BucketKeysPrefix": {
+			"Description": "This determines the prefix used the keys bucket.",
+			"Type": "String"
+		},
+
+		"BucketStacksPrefix": {
+			"Description": "This determines the prefix used the stacks bucket.",
+			"Type": "String"
+		},
+
+		"BucketScriptsPrefix": {
+			"Description": "This determines the prefix used the scripts bucket.",
+			"Type": "String"
+		},
+
+		"BucketWebContentPrefix": {
+			"Description": "This determines the prefix used the web content bucket.",
+			"Type": "String"
+		},
+
+		"BucketBinariesPrefix": {
+			"Description": "This determines the prefix used the binaries bucket.",
+			"Type": "String"
+		}
+	},
+
+	"Mappings": {
+
+		"Region": {
+
+			"us-east-1": {
+				"RegionName": "virginia"
+			},
+			"us-west-1": {
+				"RegionName": "california"
+			},
+			"us-west-2": {
+				"RegionName": "oregon"
+			},
+			"eu-west-1": {
+				"RegionName": "ireland"
+			},
+			"eu-central-1": {
+				"RegionName": "frankfurt"
+			},
+			"ap-northeast-1": {
+				"RegionName": "japan"
+			},
+			"ap-southeast-1": {
+				"RegionName": "singapore"
+			},
+			"ap-southeast-2": {
+				"RegionName": "sydney"
+			},
+			"sa-east-1": {
+				"RegionName": "brazil"
+			}
+		}
+	},
+
+	"Resources": {
+
+		"BucketKeys": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"BucketName": { "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+			},
+			"DeletionPolicy": "Retain"
+		},
+
+		"BucketStacks": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"BucketName": { "Fn::Join": [ "-", [ { "Ref": "BucketStacksPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+			},
+			"DeletionPolicy": "Retain"
+		},
+
+		"BucketScripts": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"BucketName": { "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+			},
+			"DeletionPolicy": "Retain"
+		},
+
+		"BucketWebContent": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"AccessControl" : "PublicRead",
+				"BucketName": { "Fn::Join": [ "-", [ { "Ref": "BucketWebContentPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+			},
+			"DeletionPolicy": "Retain"
+		},
+
+		"BucketBinaries": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"BucketName": { "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+			},
+			"DeletionPolicy": "Retain"
+		}
+	}
+}

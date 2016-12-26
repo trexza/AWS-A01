@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Assignment 1</title>
+
+    <style>
+
+        body{ background: #ddd; margin: 0; padding: 0; }
+        #container{ width: 950px; margin: 0 auto; background: #fff; padding: 200px 25px; }
+        table{ border-collapse: collapse; width: 100% }
+        td{ border: 1px solid #eee; padding: 10px; }
+
+        @media screen and (max-width: 480px){
+
+            #container{ width: auto; margin: 0; padding: 25px 0; }
+            table { display: block; }
+            td{ display: block; padding: 5px 0; border: none; }
+            td img{ display: block; margin: 0; width: 100%; max-width: none; }
+
+        }
+
+        img{ max-width: 100%; height: auto; width: auto\\9; /* ie8 */ }
+
+    </style>
+
+</head>
+
+<body>
+<h2>Hello AWS World</h2>
+<div id="container">
+
+    <div id="page_body">
+
+        <table>
+            <tbody>
+            <tr>
+                <td><img src="https://s3-ap-southeast-1.amazonaws.com/web-singapore-a01/img/screen-shot1.png" alt="EBS Volume" /></td>
+                <td><img src="https://s3-ap-southeast-1.amazonaws.com/web-singapore-a01/img/screen-shot2.png" alt="Document Root" /></td>
+                <td><img src="https://s3-ap-southeast-1.amazonaws.com/web-singapore-a01/img/screen-shot3.png" alt="Apache Conf" /></td>
+
+            </tr>
+            </tbody>
+        </table>
+
+    </div><!-- page body -->
+
+</div><!-- container -->
+
+</body>
+</html>

@@ -1,0 +1,243 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "Bastion Shared Components",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "Name of the company.",
+			"Type": "String"
+		},
+
+		"VpcName": {
+			"Description": "VPC name descriptor.",
+			"Type": "String"
+		},
+
+		"VpcId": {
+			"Description": "VPC Id",
+			"Type": "String"
+		},
+
+		"VpcCidrBlock": {
+			"Description": "Cidr Block for the VPC",
+			"Type": "String"
+		},
+
+		"CriticalAlertEmail": {
+			"Description": "This email address will receive all production autoscaling event notifications.",
+			"Type": "String",
+			"AllowedPattern": "^[^@]+@[^@]+\\.[^@]+$"
+		},
+
+		"BucketScripts": {
+			"Description": "Bucket hosting bootstrap scripts.",
+			"Type": "String"
+		},
+
+		"BucketBinaries": {
+			"Description": "Bucket containing installable binaries.",
+			"Type": "String"
+		},
+
+		"BucketKeys": {
+			"Description": "Bucket hosting vpn keys.",
+			"Type": "String"
+		}
+	},
+
+	"Resources": {
+
+		"Role": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Statement": [ {
+						"Effect": "Allow",
+						"Principal": {
+							"Service": [ "ec2.amazonaws.com" ]
+						},
+						"Action": [ "sts:AssumeRole" ]
+					} ]
+				},
+				"Path": "/core/"
+			}
+		},
+
+		"Profile": {
+			"Type": "AWS::IAM::InstanceProfile",
+			"Properties": {
+				"Path": "/core/",
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyEip": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "PolicyEip",
+				"PolicyDocument": {
+					"Statement": [ {
+						"Action": [
+							"ec2:AssociateAddress"
+						],
+						"Effect": "Allow",
+						"Resource": [ "*" ]
+					} ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyS3": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "PolicyVpnS3",
+				"PolicyDocument": {
+					"Statement": [ {
+						"Action": [
+							"s3:ListAllMyBuckets"
+						],
+						"Effect": "Allow",
+						"Resource": [ "arn:aws:s3:::*" ]
+					}, {
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/eip" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/eip/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/host" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/host/*" ] ] }
+						]
+					} ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"EipBastion": {
+			"Type": "AWS::EC2::EIP",
+			"Properties": {
+				"Domain": "vpc"
+			}
+		},
+
+
+		"SecurityGroupBastion": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security rules for Bastion servers.",
+				"VpcId": { "Ref": "VpcId" },
+				"SecurityGroupIngress": [ {
+						"IpProtocol": "udp",
+						"FromPort": "1194",
+						"ToPort": "1194",
+						"CidrIp": "14.202.165.0/24"
+					},
+					{
+						"IpProtocol": "udp",
+						"FromPort": "1194",
+						"ToPort": "1194",
+						"CidrIp": "139.163.131.0/24"
+					},
+
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "14.202.165.0/24"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "139.163.131.0/24"
+					},
+					{
+						"IpProtocol": "udp",
+						"FromPort": "1194",
+						"ToPort": "1194",
+						"CidrIp": "175.103.19.0/24"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "175.103.19.0/24"
+					}
+				],
+				"SecurityGroupEgress": [ {
+						"IpProtocol": "tcp",
+						"FromPort": "0",
+						"ToPort": "65535",
+						"CidrIp": { "Ref": "VpcCidrBlock" }
+					}, {
+						"IpProtocol": "tcp",
+						"FromPort": "80",
+						"ToPort": "80",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "tcp",
+						"FromPort": "443",
+						"ToPort": "443",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "udp",
+						"FromPort": "53",
+						"ToPort": "53",
+						"CidrIp": "0.0.0.0/0"
+					}, {
+						"IpProtocol": "udp",
+						"FromPort": "123",
+						"ToPort": "123",
+						"CidrIp": "0.0.0.0/0"
+					}
+				],
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] }, "Vpn Server" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		}
+	},
+
+	"Outputs" : {
+
+		"Profile": {
+			"Description": "IAM Profile for VPN",
+			"Value": { "Ref": "Profile" }
+		},
+
+		"Role": {
+			"Description": "IAM Role for VPN",
+			"Value": { "Ref": "Role" }
+		},
+
+		"SecurityGroupBastion": {
+			"Description": "Security Group for VPN instances",
+			"Value": { "Ref": "SecurityGroupBastion" }
+		},
+		"EipBastionAllocationId": {
+			"Description": "EIP allocation id for nat gateway 01",
+			"Value": { "Fn::GetAtt": [ "EipBastion" , "AllocationId" ] }
+		},
+
+		"EipBastionIp": {
+			"Description": "EIP address for nat gateway 01",
+			"Value": { "Ref": "EipBastion" }
+		}
+	}
+}

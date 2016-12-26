@@ -1,0 +1,573 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "App Ec2 instances",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "A name for the stack",
+			"Type": "String"
+		},
+
+		"Target": {
+			"Description": "Envrionment target.",
+			"Type": "String"
+		},
+
+		"InstanceType": {
+			"Description": "Instance type to use.",
+			"Type": "String"
+		},
+
+		"Role": {
+			"Description": "IAM Role.",
+			"Type": "String"
+		},
+
+		"Profile": {
+			"Description": "IAM Profile.",
+			"Type": "String"
+		},
+
+		"Sns": {
+			"Description": "SNS Topic to be used by autoscaling.",
+			"Type": "String"
+		},
+
+		"AvailabilityZone1": {
+			"Description": "Availability zone 1.",
+			"Type": "String"
+		},
+
+		"PrivateApplicationSubnetZone1": {
+			"Description": "Private application subnet in Availability Zone 1.",
+			"Type": "String"
+		},
+
+		"PublicApplicationSubnetZone1": {
+			"Description": "Public application subnet in Availability Zone 1.",
+			"Type": "String"
+		},
+
+		"SecurityGroupLinuxServer": {
+			"Description": "Security group that is common to all accessible linux servers.",
+			"Type": "String"
+		},
+
+		"SecurityGroupWebApp": {
+			"Description": "Security group that is common to all web app servers.",
+			"Type": "String"
+		},
+
+		"SecurityGroupWebAppElb": {
+			"Description": "Security group used by web app elbs.",
+			"Type": "String"
+		},
+
+		"SecurityGroupJKApp": {
+			"Description": "Security group for Jenkins app servers.",
+			"Type": "String"
+		},
+
+		"SecurityGroupJKElb": {
+			"Description": "Security group for internal elbs.",
+			"Type": "String"
+		},
+
+		"SecurityGroupPublicWebAccess": {
+			"Description": "Security group that allow access to public facing web components.",
+			"Type": "String"
+		},
+
+		"SecurityGroupRestrictedPublicWebAccess": {
+			"Description": "Security group that allow restricted access to public facing web components.",
+			"Type": "String"
+		},
+
+		"InternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for internal DNS.",
+			"Type": "String"
+		},
+
+		"ExternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for external DNS.",
+			"Type": "String"
+		},
+
+		"ExternalDnsSuffix": {
+			"Description": "DNS Suffix used outside the VPC.",
+			"Type": "String"
+		},
+
+		"InternalDnsSuffix": {
+			"Description": "DNS Suffix used within the VPC. This applies to instance host names and to dns names.",
+			"Type": "String"
+		},
+
+		"AliasElbDnsHostedZoneId": {
+			"Description": "Hosted zone id to use for elb alias records.",
+			"Type": "String"
+		},
+
+		"IntAliasElbDnsHostedZoneId": {
+			"Description": "Hosted zone id to use for internal elb alias records.",
+			"Type": "String"
+		},
+
+		"TimeZone": {
+			"Description": "Time zone setting for servers.",
+			"Type": "String"
+		},
+
+		"BucketSuffix": {
+			"Description": "This determines the suffix used for all buckets creates.",
+			"Type": "String"
+		},
+
+		"BucketKeysPrefix": {
+			"Description": "This determines the prefix used the keys bucket.",
+			"Type": "String"
+		},
+
+		"BucketScriptsPrefix": {
+			"Description": "This determines the prefix used the scripts bucket.",
+			"Type": "String"
+		},
+
+		"BucketBinariesPrefix": {
+			"Description": "This determines the prefix used the binaries bucket.",
+			"Type": "String"
+		},
+
+		"ClusterDesiredSize": {
+			"Description": "Desired cluster size.",
+			"Type": "String"
+		},
+
+		"ClusterMinSize": {
+			"Description": "Min cluster size.",
+			"Type": "String"
+		},
+
+		"ClusterMaxSize": {
+			"Description": "Max cluster size.",
+			"Type": "String"
+		}
+	},
+
+	"Mappings": {
+
+		"Static": {
+
+			"Final": {
+
+			"EnvironmentName": "ContinuousDelivery",
+				"VpcName": "Test",
+				"CacheUrl": ""
+			},
+
+			"Keys": {
+
+				"AppKeyNameSuffix": "CD"
+			}
+		},
+
+		"Ami": {
+
+			"us-east-1": {
+				"Base": "ami-146e2a7c"
+			},
+			"us-west-1": {
+				"Base": "ami-42908907"
+			},
+			"us-west-2": {
+				"Base": "ami-20be7540"
+			},
+			"eu-west-1": {
+				"Base": "ami-9d23aeea"
+			},
+			"eu-central-1": {
+				"Base": "ami-04003319"
+			},
+			"ap-northeast-1": {
+				"Base": "ami-18869819"
+			},
+			"ap-southeast-1": {
+				"Base": "ami-96bb90c4"
+			},
+			"ap-southeast-2": {
+				"Base": "ami-a5416cc6"
+			},
+			"sa-east-1": {
+				"Base": "ami-af9925b2"
+			}
+		},
+
+		"Region": {
+
+			"us-east-1": {
+				"RegionName": "virginia",
+				"S3Endpoint": "s3-us-east-1.amazonaws.com"
+			},
+			"us-west-1": {
+				"RegionName": "california",
+				"S3Endpoint": "s3-us-east-2.amazonaws.com"
+			},
+			"us-west-2": {
+				"RegionName": "oregon",
+				"S3Endpoint": "s3-us-west-2.amazonaws.com"
+			},
+			"eu-west-1": {
+				"RegionName": "ireland",
+				"S3Endpoint": "s3-eu-west-1.amazonaws.com"
+			},
+			"eu-central-1": {
+				"RegionName": "frankfurt",
+				"S3Endpoint": "s3-eu-central-1.amazonaws.com"
+			},
+			"ap-northeast-1": {
+				"RegionName": "japan",
+				"S3Endpoint": "s3-ap-northeast-1.amazonaws.com"
+			},
+			"ap-southeast-1": {
+				"RegionName": "singapore",
+				"S3Endpoint": "s3-ap-southeast-1.amazonaws.com"
+			},
+			"ap-southeast-2": {
+				"RegionName": "sydney",
+				"S3Endpoint": "s3-ap-southeast-2.amazonaws.com"
+			},
+			"sa-east-1": {
+				"RegionName": "brazil",
+				"S3Endpoint": "s3-sa-east-1.amazonaws.com"
+			}
+		}
+	},
+
+	"Resources": {
+
+		"Metadata": {
+			"Type": "AWS::AutoScaling::LaunchConfiguration",
+			"Properties": {
+				"ImageId": { "Fn::FindInMap": [ "Ami", { "Ref": "AWS::Region" }, "Base" ] },
+				"InstanceType": { "Ref": "InstanceType" }
+			},
+			"Metadata": {
+				"AWS::CloudFormation::Authentication": {
+					"BucketAuth": {
+						"type": "S3",
+						"roleName": { "Ref": "Role" },
+						"buckets": [
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketKeysPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketScriptsPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] },
+							{ "Fn::Join": [ "-", [ { "Ref": "BucketBinariesPrefix" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "BucketSuffix" } ] ] }
+						]
+					}
+				},
+				"AWS::CloudFormation::Init": {
+					"configSets": {
+						"default": [ "time", "host", "nginx", "jenkins", "logs"]
+					},
+					"time": {
+						"files": {
+							"/etc/sysconfig/clock": {
+								"content": { "Fn::Join": [ "", [ "ZONE=\"", { "Ref": "TimeZone" }, "\"\n", "UTC=true\n" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"1-localtime": {
+								"command": "rm -rf /etc/localtime"
+							},
+							"2-localtime": {
+								"command": { "Fn::Join": [ "", [ "ln -s /usr/share/zoneinfo/", { "Ref": "TimeZone" }, " /etc/localtime" ] ] }
+							}
+						}
+					},
+					"host": {
+						"files": {
+							"/opt/cd/host/set-hostname.sh": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/host/set-hostname-ubuntu.sh" ] ] },
+								"mode": "000744",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"set-hostname": {
+								"command": { "Fn::Join": [ "", [ "/opt/cd/host/set-hostname.sh -i -h ", "cd", " -d ", { "Ref": "InternalDnsSuffix" } ] ] }
+							}
+						}
+					},
+					"nginx": {
+						"packages": {
+							"apt": {
+								"nginx": []
+							}
+						},
+						"files": {
+							"/etc/nginx/jconfig/jenkins": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/proxy/nginx-proxy.conf" ] ] },
+								"mode": "000744",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"1-remove-default-vhost": {
+								"command": "rm /etc/nginx/sites-enabled/default"
+							},
+							"2-link-proxy": {
+								"command": "ln -s /etc/nginx/jconfig/jenkins /etc/nginx/sites-enabled/default"
+							},
+							"3-login-www-data": {
+								"command": "chsh -s /bin/bash www-data"
+							}
+						},
+						"services": {
+							"sysvinit": {
+								"nginx": {
+									"enabled": "true",
+									"ensureRunning": "true"
+								}
+							}
+						}
+					},
+					"jenkins": {
+						"packages": {
+							"apt": {
+								"awscli": []
+							}
+						},
+						"files": {
+
+							"/opt/cd/ansible/hosts/customhosts.txt": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/ansible/customhosts.txt" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							},
+
+							"/opt/cd/ansible/scripts/bootstrap_ansible.sh": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/ansible/bootstrap_ansible.sh" ] ] },
+								"mode": "000755",
+								"owner": "root",
+								"group": "root"
+							},
+
+							"/opt/cd/ansible/ansible.cfg": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/ansible/ansible.cfg" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							},
+
+							"/opt/cd/ansible/site.yml": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/ansible/site.yml" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							},
+
+							"/var/www/.ssh/config": {
+								"content": "StrictHostKeyChecking no\n",
+								"mode": "000644",
+								"owner": "www-data",
+								"group": "www-data"
+							},
+							"/var/www/.ssh/id_rsa": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketKeysPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/gitsecret/id_git4aws_rsa" ] ] },
+								"mode": "000600",
+								"owner": "www-data",
+								"group": "www-data"
+							},
+							"/etc/sudoers.d/jenkins": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/host/sudoer" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+						"commands": {
+							"11-dirs": {
+								"command": "mkdir -p /opt/cd/ansible && mkdir -p /opt/cd/ansible/hosts && mkdir -p /opt/cd/ansible/scripts && mkdir -p /opt/trexza/src && mkdir -p /opt/trexza/logs"
+							},
+							"12-perms": {
+								"command": "chown -R www-data:www-data /opt/trexza"
+							},
+							"13-ansible-install": {
+								"command": "apt-get install -y software-properties-common && sudo apt-get update && apt-add-repository -y ppa:ansible/ansible && apt-get install -y ansible"
+							},
+							"14-copy-ansiblecfg": {
+								"command": "cp /opt/cd/ansible/ansible.cfg /etc/ansible/ansible.cfg"
+							},
+							"15-install-ansiblegalaxy": {
+								"command": "ansible-galaxy install geerlingguy.jenkins"
+							},
+							"16-python-error-correction": {
+								"command": "sed -i 's/\"{{ jenkins_connection_retries }}\"/5/g' /etc/ansible/roles/geerlingguy.jenkins/tasks/main.yml && sed -i 's/\"{{ jenkins_connection_delay }}\"/10/g' /etc/ansible/roles/geerlingguy.jenkins/tasks/main.yml"
+							},
+							"16a-geerlingy-error-correction": {
+								"command": "sed -i 's/when: java_home/#&/' /etc/ansible/roles/geerlingguy.java/tasks/main.yml"
+							},
+							"16b-geerlingy-error-correction": {
+								"command": "sed -i 's/package:/apt:/' /etc/ansible/roles/geerlingguy.java/tasks/setup-RedHat.yml"
+							},
+							"17-run-ansible": {
+								"command": "ansible-playbook -i /opt/cd/ansible/hosts/customhosts.txt /opt/cd/ansible/site.yml -c local"
+							},
+							"18-install-git": {
+								"command": "apt-get install -y git"
+							},
+							"19-git-clone": {
+								"command": "sudo -i -u www-data git clone git@github.com:trexza/ansible-nginx.git /opt/trexza/repository"
+							},
+							"20-restart-nginx": {
+								"command": "/etc/init.d/nginx reload && /etc/init.d/nginx restart"
+							}
+						}
+					},
+					"logs": {
+						"files": {
+							"/opt/cd/log-collector/agent-config": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/logs/agent-config" ] ] },
+								"mode": "000644",
+								"owner": "root",
+								"group": "root"
+							},
+							"/opt/cd/log-collector/aws-logs-install.sh": {
+								"source": { "Fn::Join": [ "", [ "https://", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "S3Endpoint" ] }, "/", { "Ref": "BucketScriptsPrefix" }, "-", { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, "-", { "Ref": "BucketSuffix" }, "/logs/aws-logs-install.sh" ] ] },
+								"mode": "000755",
+								"owner": "root",
+								"group": "root",
+								"context": {
+									"region": { "Ref": "AWS::Region" }
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+
+		"LaunchConfiguration": {
+			"Type": "AWS::AutoScaling::LaunchConfiguration",
+			"Properties": {
+				"IamInstanceProfile": { "Ref": "Profile" },
+				"AssociatePublicIpAddress": "true",
+				"ImageId": { "Fn::FindInMap": [ "Ami", { "Ref": "AWS::Region" }, "Base" ] },
+				"InstanceType": { "Ref": "InstanceType" },
+				"InstanceMonitoring": "false",
+				"KeyName": { "Fn::Join": [ "-", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Region", { "Ref": "AWS::Region" }, "RegionName" ] }, { "Ref": "Target" }, { "Fn::FindInMap": [ "Static", "Keys", "AppKeyNameSuffix" ] } ] ] },
+				"SecurityGroups": [
+					{ "Ref": "SecurityGroupLinuxServer" },
+					{ "Ref": "SecurityGroupJKApp" }
+				],
+				"UserData": {
+					"Fn::Base64": {
+						"Fn::Join": [ "", [
+							"#!/bin/bash\n",
+							"exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1\n",
+							"export DEBIAN_FRONTEND=noninteractive\n",
+							"apt-get -y update\n",
+							"apt-get -y install python-setuptools\n",
+							"apt-get -y install language-pack-en\n",
+							"wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz","\n",
+							"mkdir -p /root/aws-cfn-bootstrap-latest","\n",
+							"tar xvfz /root/aws-cfn-bootstrap-latest.tar.gz --strip-components=1 -C /root/aws-cfn-bootstrap-latest","\n",
+							"easy_install /root/aws-cfn-bootstrap-latest/","\n",
+							"/usr/local/bin/cfn-init -s ", { "Ref": "AWS::StackName" }, " -r Metadata --region ", { "Ref": "AWS::Region" }, "\n",
+							"/opt/cd/log-collector/aws-logs-install.sh\n",
+							"service awslogs start\n"
+						] ]
+					}
+				}
+			}
+		},
+
+		"AutoscalingGroup": {
+			"Type": "AWS::AutoScaling::AutoScalingGroup",
+			"Properties": {
+				"AvailabilityZones": [
+					{ "Ref": "AvailabilityZone1" }
+				],
+				"LaunchConfigurationName": { "Ref": "LaunchConfiguration" },
+				"DesiredCapacity": { "Ref": "ClusterDesiredSize" },
+				"MinSize": { "Ref": "ClusterMinSize" },
+				"MaxSize": { "Ref": "ClusterMaxSize" },
+				"HealthCheckType": "ELB",
+				"HealthCheckGracePeriod": "90000",
+				"LoadBalancerNames": [ { "Ref": "ElasticLoadBalancer" } ],
+				"NotificationConfiguration": {
+					"TopicARN": { "Ref": "Sns" },
+					"NotificationTypes": [ "autoscaling:EC2_INSTANCE_LAUNCH", "autoscaling:EC2_INSTANCE_LAUNCH_ERROR", "autoscaling:EC2_INSTANCE_TERMINATE", "autoscaling:EC2_INSTANCE_TERMINATE_ERROR" ]
+				},
+				"VPCZoneIdentifier": [
+					{ "Ref": "PrivateApplicationSubnetZone1" }
+				],
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] }, "Jenkins", { "Fn::FindInMap": [ "Static", "Final", "EnvironmentName" ] } ] ] }, "PropagateAtLaunch": "true" },
+					{ "Key": "Role", "Value": "webapp", "PropagateAtLaunch": "true" },
+					{ "Key": "Segment", "Value": "app", "PropagateAtLaunch": "true" },
+					{ "Key": "Sector", "Value": "private", "PropagateAtLaunch": "true" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] }, "PropagateAtLaunch": "true" }
+				]
+			}
+		},
+
+		"ElasticLoadBalancer": {
+			"Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties": {
+				"ConnectionDrainingPolicy": {
+					"Enabled": "true",
+					"Timeout": "60"
+				},
+				"Listeners": [ {
+						"LoadBalancerPort": "80",
+						"Protocol": "HTTP",
+						"InstancePort": "8080",
+						"InstanceProtocol": "HTTP"
+					}
+				],
+				"HealthCheck": {
+					"HealthyThreshold": "2",
+					"Interval": "10",
+					"Target": "HTTP:8080/index",
+					"Timeout": "5",
+					"UnhealthyThreshold": "3"
+				},
+				"Scheme": "internal",
+				"SecurityGroups": [
+					{ "Ref": "SecurityGroupJKElb" },
+					{ "Ref": "SecurityGroupPublicWebAccess" }
+				],
+				"Subnets": [
+					{ "Ref": "PrivateApplicationSubnetZone1" }
+				],
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " - ", [ { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] }, "Web App", { "Fn::FindInMap": [ "Static", "Final", "EnvironmentName" ] } ] ] } },
+					{ "Key": "Role", "Value": "webapp" },
+					{ "Key": "Segment", "Value": "app" },
+					{ "Key": "Sector", "Value": "public" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Fn::FindInMap": [ "Static", "Final", "VpcName" ] } ] ] } }
+				]
+			}
+		},
+
+		"DnsElbAlias": {
+			"Type": "AWS::Route53::RecordSet",
+			"Properties": {
+				"HostedZoneId": { "Ref": "InternalDnsHostedZoneId" },
+				"Type": "A",
+				"AliasTarget": {
+					"HostedZoneId": { "Ref": "IntAliasElbDnsHostedZoneId" },
+					"DNSName": { "Fn::GetAtt": [ "ElasticLoadBalancer", "DNSName" ] }
+				},
+				"Name": { "Ref": "InternalDnsSuffix" }
+			}
+		}
+	}
+}

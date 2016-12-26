@@ -1,0 +1,17 @@
+{
+    "AvailabilityZone1": "ap-southeast-1a",
+    "PublicApplicationSubnetZone1": "subnet-c456cab2",
+    "SecurityGroupRestrictedPublicWebAccess": "sg-da39f2bd",
+    "SecurityGroupWebApp": "sg-a939f2ce",
+    "EipBastionIp": "52.74.176.122",
+    "SecurityGroupWebAppElb": "sg-dd39f2ba",
+    "RoutingSubnetZone1": "subnet-c556cab3",
+    "PrivateApplicationSubnetZone1": "subnet-c256cab4",
+    "ProfileWeb": "awsa01-base-stack-IAM-17RLH0JO0E9CO-Profile-9MMZU1Z2R8NQ",
+    "VpcId": "vpc-60ec4204",
+    "RoleWeb": "awsa01-base-stack-IAM-17RLH0JO0E9CO-Role-15KTCRCW2Q1GP",
+    "EipBastionAllocationId": "eipalloc-84245ce1",
+    "SecurityGroupPublicWebAccess": "sg-dc39f2bb",
+    "SecurityGroupLinuxServer": "sg-db39f2bc",
+    "SnsWeb": "arn:aws:sns:ap-southeast-1:169828484415:AWSA01-AWSA01-WebAppAutoscale"
+}

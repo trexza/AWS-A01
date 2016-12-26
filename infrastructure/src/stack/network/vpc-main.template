@@ -1,0 +1,415 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "VPC Core Components",
+
+	"Parameters": {
+
+		"StackName": {
+			"Description": "A name for the stack",
+			"Type": "String"
+		},
+
+		"AvailabilityZone1": {
+			"Description": "Availability zone 1",
+			"Type": "String"
+		},
+
+		"VpcCidrBlockPrefix": {
+			"Description": "Two stanzas of the CIDR",
+			"Type": "String",
+			"Default": "10.7"
+		},
+
+		"CriticalAlertEmail": {
+			"Description": "This email address will receive all critical event notifications.",
+			"Type": "String",
+			"AllowedPattern": "^[^@]+@[^@]+\\.[^@]+$"
+		},
+
+		"S3Endpoint": {
+			"Description": "S3 endpoint.",
+			"Type": "String"
+		},
+
+		"VpcName": {
+			"Description": "VPC name descriptor.",
+			"Type": "String"
+		},
+
+		"EipNatGateway01AllocationId": {
+			"Description": "Allocation id for nat gateway eip.",
+			"Type": "String"
+		},
+
+		"TimeZone": {
+			"Description": "Time zone setting for servers.",
+			"Type": "String"
+		},
+
+		"BucketStacks": {
+			"Description": "Bucket hosting cloud formation scripts.",
+			"Type": "String"
+		},
+
+		"BucketScripts": {
+			"Description": "Bucket hosting bootstrap scripts.",
+			"Type": "String"
+		},
+
+		"BucketKeys": {
+			"Description": "Bucket hosting ssl certs.",
+			"Type": "String"
+		},
+
+		"BucketBinaries": {
+			"Description": "Bucket hosting binary files.",
+			"Type": "String"
+		},
+
+		"BucketWebContent": {
+			"Description": "Bucket hosting application storage.",
+			"Type": "String"
+		},
+
+		"InternalDnsSuffix": {
+			"Description": "DNS Suffix used within the VPC. This applies to instance host names and to dns names.",
+			"Type": "String"
+		},
+
+		"InternalDnsHostedZoneId": {
+			"Description": "Hosted zone id for internal DNS.",
+			"Type": "String"
+		},
+
+		"StackPath": {
+			"Description": "Root path for all stacks.",
+			"Type": "String"
+		},
+
+		"ScriptPath": {
+			"Description": "Root path for all scripts.",
+			"Type": "String"
+		},
+
+		"BinaryPath": {
+			"Description": "Root path for all binaries.",
+			"Type": "String"
+		}
+	},
+
+	"Mappings": {
+
+		"Static": {
+
+			"Final": {
+				"PublicRoutingSubnetZone1CidrBlockSuffix": "0.0/28",
+				"PublicRoutingSubnetZone2CidrBlockSuffix": "0.16/28",
+				"PublicApplicationSubnetZone1CidrBlockSuffix": "100.0/24",
+				"PublicApplicationSubnetZone2CidrBlockSuffix": "101.0/24",
+				"PrivateApplicationSubnetZone1CidrBlockSuffix": "200.0/24",
+				"PrivateApplicationSubnetZone2CidrBlockSuffix": "201.0/24",
+				"RoutingSubnetsRangeCidrBlockSuffix": "0.0/27"
+			}
+		}
+	},
+
+	"Resources": {
+
+		"Vpc": {
+			"Type": "AWS::EC2::VPC",
+			"Properties": {
+				"CidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, "0.0/16" ] ] },
+				"InstanceTenancy": "default",
+				"EnableDnsSupport": "true",
+      			"EnableDnsHostnames": "true",
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } },
+					{ "Key": "Segment", "Value": "integration" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"DhcpOptions": {
+			"Type": "AWS::EC2::DHCPOptions",
+			"Properties": {
+				"DomainName": { "Ref": "InternalDnsSuffix" },
+				"DomainNameServers": [ "AmazonProvidedDNS" ]
+			}
+		},
+
+		"AttachDhcpOptions": {
+			"Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+			"Properties": {
+				"DhcpOptionsId": { "Ref": "DhcpOptions" },
+				"VpcId": { "Ref": "Vpc" }
+			}
+		},
+
+		"InternetGateway" : {
+			"Type": "AWS::EC2::InternetGateway",
+			"Properties": {
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } },
+					{ "Key": "Segment", "Value": "integration" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"AttachGateway": {
+			"Type": "AWS::EC2::VPCGatewayAttachment",
+			"Properties": {
+				"VpcId": { "Ref": "Vpc" },
+				"InternetGatewayId": { "Ref": "InternetGateway" }
+			}
+		},
+
+		"NatGateway01": {
+			"DependsOn": "AttachGateway",
+			"Type": "AWS::EC2::NatGateway",
+			"Properties": {
+				"AllocationId": { "Ref": "EipNatGateway01AllocationId" },
+				"SubnetId": { "Ref": "PublicRoutingSubnetZone1" }
+			}
+		},
+
+
+		"VpcEndpointRoutingSubnetsS3": {
+			"Type": "AWS::EC2::VPCEndpoint",
+			"Properties": {
+				"ServiceName": { "Fn::Join": [ ".", [ "com.amazonaws", { "Ref": "AWS::Region" }, "s3" ] ] },
+				"VpcId": { "Ref": "Vpc" },
+				"RouteTableIds": [ { "Ref": "PublicRoutingRouteTable" } ],
+				"PolicyDocument": {
+					"Statement": [ {
+						"Principal": "*",
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::repo", { "Ref": "AWS::Region" }, "amazonaws.com" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::repo", { "Ref": "AWS::Region" }, "amazonaws.com/*" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::packages", { "Ref": "AWS::Region" }, "amazonaws.com" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::packages", { "Ref": "AWS::Region" }, "amazonaws.com/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" } ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/gitsecret" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/gitsecret/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/html" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/html/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/img" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/img/*" ] ] }
+						]
+					} ]
+				}
+			}
+		},
+
+		"VpcEndpointPrivateSubnetsS3": {
+			"Type": "AWS::EC2::VPCEndpoint",
+			"Properties": {
+				"ServiceName": { "Fn::Join": [ ".", [ "com.amazonaws", { "Ref": "AWS::Region" }, "s3" ] ] },
+				"VpcId": { "Ref": "Vpc" },
+				"RouteTableIds": [ { "Ref": "PrivateRouteTableZone1" } ],
+				"PolicyDocument": {
+					"Statement": [ {
+						"Principal": "*",
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::repo", { "Ref": "AWS::Region" }, "amazonaws.com" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::repo", { "Ref": "AWS::Region" }, "amazonaws.com/*" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::packages", { "Ref": "AWS::Region" }, "amazonaws.com" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::packages", { "Ref": "AWS::Region" }, "amazonaws.com/*" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::archive.ubuntu.com", { "Ref": "AWS::Region" }, "amazonaws.com" ] ] },
+							{ "Fn::Join": [ ".", [ "arn:aws:s3:::archive.ubuntu.com", { "Ref": "AWS::Region" }, "amazonaws.com/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketStacks" } ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketStacks" }, "/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" } ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/gitsecret" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/gitsecret/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketBinaries" } ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketBinaries" }, "/*" ] ] }
+						]
+					}, {
+						"Principal": "*",
+						"Action": [
+							"s3:*"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent"} ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent"}, "/*" ] ] }
+						]
+					} ]
+				}
+			}
+		},
+
+		"PublicRoutingSubnetZone1": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"AvailabilityZone": { "Ref": "AvailabilityZone1" },
+				"VpcId": { "Ref": "Vpc" },
+				"CidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, { "Fn::FindInMap": [ "Static", "Final", "PublicRoutingSubnetZone1CidrBlockSuffix" ] } ] ] },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" }, "-", "Public Routing Subnet Zone 1" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Sector", "Value": "public" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"PublicApplicationSubnetZone1": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"AvailabilityZone": { "Ref": "AvailabilityZone1" },
+				"VpcId": { "Ref": "Vpc" },
+				"CidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, { "Fn::FindInMap": [ "Static", "Final", "PublicApplicationSubnetZone1CidrBlockSuffix" ] } ] ] },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" }, "-", "Public Application Subnet Zone 1" ] ] } },
+					{ "Key": "Segment", "Value": "app" },
+					{ "Key": "Sector", "Value": "public" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+
+		"PrivateApplicationSubnetZone1": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"AvailabilityZone": { "Ref": "AvailabilityZone1" },
+				"VpcId": { "Ref": "Vpc" },
+				"CidrBlock": { "Fn::Join": [ ".", [ { "Ref": "VpcCidrBlockPrefix" }, { "Fn::FindInMap": [ "Static", "Final", "PrivateApplicationSubnetZone1CidrBlockSuffix" ] } ] ] },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" }, "-", "Private Application Subnet Zone 1" ] ] } },
+					{ "Key": "Segment", "Value": "app" },
+					{ "Key": "Sector", "Value": "private" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+
+		"PublicRoutingRouteTable": {
+			"Type": "AWS::EC2::RouteTable",
+			"Properties": {
+				"VpcId": { "Ref": "Vpc" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" }, "-", "Public Route Table" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Sector", "Value": "public" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"InternetGatewayRoute": {
+			"Type": "AWS::EC2::Route",
+			"Properties": {
+				"RouteTableId": { "Ref": "PublicRoutingRouteTable" },
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"GatewayId": { "Ref": "InternetGateway" }
+			}
+		},
+
+		"PublicRoutingSubnetRouteTableAssociationZone1" : {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": { "Ref": "PublicRoutingSubnetZone1" },
+				"RouteTableId": { "Ref": "PublicRoutingRouteTable" }
+			}
+		},
+
+
+		"PublicApplicationSubnetRouteTableAssociationZone1" : {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": { "Ref": "PublicApplicationSubnetZone1" },
+				"RouteTableId": { "Ref": "PublicRoutingRouteTable" }
+			}
+		},
+
+
+		"PrivateRouteTableZone1": {
+			"Type": "AWS::EC2::RouteTable",
+			"Properties": {
+				"VpcId": { "Ref": "Vpc" },
+				"Tags": [
+					{ "Key": "Name", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" }, "-", "Private Route Table 1" ] ] } },
+					{ "Key": "Segment", "Value": "core" },
+					{ "Key": "Sector", "Value": "private" },
+					{ "Key": "RouteType", "Value": "PrivateRouteTable" },
+					{ "Key": "Zone", "Value": "1" },
+					{ "Key": "Vpc", "Value": { "Fn::Join": [ " ", [ { "Ref": "StackName" }, { "Ref": "VpcName" } ] ] } }
+				]
+			}
+		},
+
+		"PrivateRouteTableZone1DefaultRoute": {
+			"Type": "AWS::EC2::Route",
+			"DependsOn": "AttachGateway",
+			"Properties": {
+				"RouteTableId": { "Ref": "PrivateRouteTableZone1" },
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"NatGatewayId": { "Ref": "NatGateway01" }
+			}
+		},
+
+		"PrivateApplicationSubnetRouteTableAssociationZone1": {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": { "Ref": "PrivateApplicationSubnetZone1" },
+				"RouteTableId": { "Ref": "PrivateRouteTableZone1" }
+			}
+		}
+
+	},
+
+	"Outputs" : {
+
+		"VpcId": {
+			"Description": "Vpc ID",
+			"Value": { "Ref": "Vpc" }
+		},
+
+		"RoutingSubnetZone1": {
+			"Description": "Routing subnet in Availability Zone 1",
+			"Value": { "Ref": "PublicRoutingSubnetZone1" }
+		},
+
+		"PublicApplicationSubnetZone1": {
+			"Description": "Public application subnet in Availability Zone 1",
+			"Value": { "Ref": "PublicApplicationSubnetZone1" }
+		},
+
+		"PrivateApplicationSubnetZone1": {
+			"Description": "Private application subnet in Availability Zone 1",
+			"Value": { "Ref": "PrivateApplicationSubnetZone1" }
+		},
+
+		"PublicRoutingRouteTable": {
+			"Description": "Route table used by public subnets",
+			"Value": { "Ref": "PublicRoutingRouteTable" }
+		},
+
+		"PrivateRouteTableZone1": {
+			"Description": "Route table used by private subnets in zone 1",
+			"Value": { "Ref": "PrivateRouteTableZone1" }
+		}
+	}
+}

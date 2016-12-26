@@ -1,0 +1,35 @@
+{
+	"StackName": "AWSA01",
+	"Region": "ap-southeast-1",
+
+	"BucketSuffix": "a01",
+	"BucketKeysPrefix": "keys",
+	"BucketStacksPrefix": "stacks",
+	"BucketScriptsPrefix": "scripts",
+	"BucketBinariesPrefix": "binaries",
+	"BucketWebContentPrefix": "web",
+
+	"InternalDnsHostedZoneId": "ZKU7V1P5SNCXU",
+	"InternalDnsSuffix": "awsa01.int.trexza.net",
+	"IntAliasElbDnsHostedZoneId": "Z1H1FL5HABSF5",
+
+	"ExternalDnsHostedZoneId": "Z1O8L2S79VG8M5",
+	"ExternalDnsSuffix": "awsa01.trexza.net",
+	"AliasElbDnsHostedZoneId": "Z1LMS91P8CMLE5",
+
+	"NotificationEmail": "senthil.cg18@gmail.com",
+	"CriticalAlertEmail": "senthil.cg18@gmail.com",
+
+	"VpcCidrBlockPrefix": "172.51",
+
+	"TimeZone": "Asia/Singapore",
+	"SingleZonePreference": "1a",
+
+	"CreateBastion": "yes",
+	"BastionInstanceType": "t2.micro",
+
+	"InstanceType": "t2.micro",
+	"ClusterDesiredSize": "1",
+	"ClusterMinSize": "1",
+	"ClusterMaxSize": "1"
+}

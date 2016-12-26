@@ -1,0 +1,313 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "IAM role, instance profile, and access policies for the server",
+	"Parameters": {
+
+		"StackName": {
+			"Description": "A name for the stack",
+			"Type": "String"
+		},
+
+		"VpcName": {
+			"Description": "VPC name descriptor.",
+			"Type": "String"
+		},
+
+		"NotificationEmail": {
+			"Description": "Email address for event notifications.",
+			"Type": "String",
+			"AllowedPattern": "^[^@]+@[^@]+\\.[^@]+$"
+		},
+
+		"CriticalAlertEmail": {
+			"Description": "Email for escalating Critical conditions",
+			"Type": "String",
+			"AllowedPattern": "^[^@]+@[^@]+\\.[^@]+$"
+		},
+
+		"ExternalDnsSuffix": {
+			"Description": "DNS Suffix used for public facing endpoints.",
+			"Type": "String"
+		},
+
+		"BucketKeys": {
+			"Description": "Bucket containing keys.",
+			"Type": "String"
+		},
+
+		"BucketScripts": {
+			"Description": "Bucket containing bootstrap scripts.",
+			"Type": "String"
+		},
+
+		"BucketBinaries": {
+			"Description": "Bucket containing installable binaries.",
+			"Type": "String"
+		},
+
+		"BucketWebContent": {
+			"Description": "Bucket containing static web content",
+			"Type": "String"
+		},
+
+
+		"KeyPath": {
+			"Description": "Root path for all keys.",
+			"Type": "String"
+		},
+
+		"ScriptPath": {
+			"Description": "Root path for all scripts.",
+			"Type": "String"
+		},
+
+		"BinaryPath": {
+			"Description": "Root path for all binaries.",
+			"Type": "String"
+		}
+	},
+
+	"Resources": {
+
+		"Role": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Statement": [ {
+						"Effect": "Allow",
+						"Principal": {
+							"Service": [ "ec2.amazonaws.com" ]
+						},
+						"Action": [ "sts:AssumeRole" ]
+					} ]
+				},
+				"Path": "/app/"
+			}
+		},
+
+		"Profile": {
+			"Type": "AWS::IAM::InstanceProfile",
+			"Properties": {
+				"Path": "/app/",
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyS3Scripts": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "S3Scripts",
+				"PolicyDocument": {
+					"Statement": [ {
+						"Action": [
+							"s3:ListAllMyBuckets"
+						],
+						"Effect": "Allow",
+						"Resource": [ "arn:aws:s3:::*" ]
+					}, {
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/host" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/host/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/ansible" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/ansible/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/proxy" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/proxy/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/logs" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/logs/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/gitsecret" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketScripts" }, "/gitsecret/*" ] ] }
+						]
+					} ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyS3Keys": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "S3Keys",
+				"PolicyDocument": {
+					"Statement": [ {
+						"Action": [
+							"s3:ListAllMyBuckets"
+						],
+						"Effect": "Allow",
+						"Resource": [ "arn:aws:s3:::*" ]
+					}, {
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/gitsecret" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/gitsecret/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketKeys" }, "/ec2keys/*" ] ] }
+						]
+					} ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyS3Binaries": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "S3Binaries",
+				"PolicyDocument": {
+					"Statement": [ {
+						"Action": [
+							"s3:ListAllMyBuckets"
+						],
+						"Effect": "Allow",
+						"Resource": [ "arn:aws:s3:::*" ]
+					}, {
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketBinaries" }, "/libraries/app" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketBinaries" }, "/libraries/app/*" ] ] }
+						]
+					} ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyS3WebContent": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "S3WebContent",
+				"PolicyDocument": {
+					"Statement": [ {
+						"Action": [
+							"s3:ListAllMyBuckets"
+						],
+						"Effect": "Allow",
+						"Resource": [ "arn:aws:s3:::*" ]
+					}, {
+						"Action": [
+							"s3:ListBucket",
+							"s3:GetObject"
+						],
+						"Effect": "Allow",
+						"Resource": [
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/img" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/img/*" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/html" ] ] },
+							{ "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "BucketWebContent" }, "/html/*" ] ] }
+						]
+					} ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicyCloudWatchLogs": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "CloudWatchLogs",
+				"PolicyDocument": {
+				    "Statement": [ {
+			            "Action": [
+			                "logs:CreateLogGroup",
+			                "logs:CreateLogStream",
+			                "logs:PutLogEvents",
+			                "logs:DescribeLogStreams"
+			            ],
+			            "Effect": "Allow",
+			            "Resource": [
+			                "arn:aws:logs:*:*:*"
+			            ]
+			        } ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"PolicySes": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "Ses",
+				"PolicyDocument": {
+				    "Statement": [ {
+			            "Action": [
+			                "ses:SendRawEmail"
+			            ],
+			            "Effect": "Allow",
+			            "Resource": [
+			                "*"
+			            ]
+			        } ]
+				},
+				"Roles": [
+					{ "Ref": "Role" }
+				]
+			}
+		},
+
+		"SampleBucketPolicy" : {
+			"Type" : "AWS::S3::BucketPolicy",
+			"Properties" : {
+				"Bucket" : {"Ref" : "BucketWebContent"},
+				"PolicyDocument": {
+					"Statement":[{
+						"Action":["s3:GetObject"],
+						"Effect":"Allow",
+						"Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BucketWebContent" } , "/*" ]]},
+						"Principal":"*"
+					}]
+				}
+			}
+		},
+
+		"Sns": {
+			"Type": "AWS::SNS::Topic",
+			"Properties": {
+				"TopicName": { "Fn::Join": [ "-", [ { "Ref": "StackName" }, { "Ref": "VpcName" }, "WebAppAutoscale" ] ] },
+				"DisplayName": { "Fn::Join": [ "", [ "CRITICAL: ", { "Ref": "StackName" }, " System Alert - Web App Autoscale" ] ] }
+			}
+		}
+	},
+
+	"Outputs": {
+
+		"RoleWeb": {
+			"Description": "IAM Role for Web App",
+			"Value": { "Ref": "Role" }
+		},
+
+		"ProfileWeb": {
+			"Description": "IAM Profile for Web App",
+			"Value": { "Ref": "Profile" }
+		},
+
+		"SnsWeb": {
+			"Description": "SNS Topic to be used by Web App autoscaling",
+			"Value": { "Ref": "Sns" }
+		}
+	}
+}

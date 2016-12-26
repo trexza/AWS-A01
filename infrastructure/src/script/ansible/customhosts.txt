@@ -1,0 +1,5 @@
+#customhosts
+#inventory of VMs for Jenkins
+
+[jenkins]
+localhost

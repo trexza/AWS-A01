@@ -1,0 +1,63 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "Create elastic IPs for allowing internet access to resources in the VPC",
+
+	"Mappings": {
+
+		"Region": {
+
+			"us-east-1": {
+				"RegionName": "virginia"
+			},
+			"us-west-1": {
+				"RegionName": "california"
+			},
+			"us-west-2": {
+				"RegionName": "oregon"
+			},
+			"eu-west-1": {
+				"RegionName": "ireland"
+			},
+			"eu-central-1": {
+				"RegionName": "frankfurt"
+			},
+			"ap-northeast-1": {
+				"RegionName": "japan"
+			},
+			"ap-southeast-1": {
+				"RegionName": "singapore"
+			},
+			"ap-southeast-2": {
+				"RegionName": "sydney"
+			},
+			"sa-east-1": {
+				"RegionName": "brazil"
+			}
+		}
+	},
+
+	"Resources": {
+
+		"EipNatGateway01": {
+			"Type": "AWS::EC2::EIP",
+			"Properties": {
+				"Domain": "vpc"
+			},
+			"DeletionPolicy": "Delete"
+		}
+	},
+
+	"Outputs": {
+
+		"EipNatGateway01AllocationId": {
+			"Description": "EIP allocation id for nat gateway 01",
+			"Value": { "Fn::GetAtt": [ "EipNatGateway01" , "AllocationId" ] }
+		},
+
+		"EipNatGateway01Ip": {
+			"Description": "EIP address for nat gateway 01",
+			"Value": { "Ref": "EipNatGateway01" }
+		}
+	}
+}
